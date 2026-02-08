@@ -1,0 +1,29 @@
+import pygame,sys
+from settings import *
+from level import Level
+
+class Game:
+    def __init__(self):
+        #initialization
+        pygame.init()
+        self.screen=pygame.display.set_mode((width,height))
+        pygame.display.set_caption("Into The Abyss")
+        self.clock=pygame.time.Clock()
+        self.level=Level()
+        
+    def run(self):
+        #game loop
+        while True:
+            self.clock.tick(fps)
+            for event in pygame.event.get():
+                if event.type==pygame.QUIT:
+                    pygame.quit()
+                    sys.exit()
+            self.screen.fill('#71B5D1')
+            self.level.run()
+            pygame.display.flip()
+
+
+if __name__== '__main__':
+    game=Game()
+    game.run()
