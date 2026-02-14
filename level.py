@@ -32,9 +32,9 @@ class Level:
     def run(self):
         #for the xp
         keys = pygame.key.get_pressed()
-        if keys[pygame.K_SPACE]: 
+        if keys[pygame.K_e]: 
             if self.space_pressed:    
-                self.player.gain_xp()
+                self.player.gain_xp(50)
             self.space_pressed=False
         else:
             self.space_pressed=True
