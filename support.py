@@ -1,4 +1,3 @@
-from os import walk
 import pygame
 def import_sprite_sheet(path,frame_width,frame_height,scale=2):
     sheet=pygame.image.load(path).convert_alpha()
@@ -14,3 +13,4 @@ def import_sprite_sheet(path,frame_width,frame_height,scale=2):
                     frame = pygame.transform.scale(frame, (new_width, new_height))
                 frames.append(frame)
     return frames  
+    

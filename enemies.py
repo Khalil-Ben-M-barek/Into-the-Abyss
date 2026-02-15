@@ -9,19 +9,20 @@ class Zombie(pygame.sprite.Sprite):
         self.hp = 100
         self.is_alive = True
         self.flash_timer = 0
+        self.distraction = None
         self.state = "IDLE"
         self.player = player
         self.status = 'IDLE'
         self.prev_status = self.status
         self.frame_index = 0
 
-        self.speed = 1.3
+        self.speed = 1.7
         self.detection_range = 300
         self.xp_reward = 50
 
         self.import_assets()
         self.frame_index = 0
-        self.animation_speed = 0.1
+        self.animation_speed = 0.15
 
         self.image = self.animations[self.status][0]
         self.rect = self.image.get_rect(center=pos)
@@ -64,22 +65,26 @@ class Zombie(pygame.sprite.Sprite):
 
         animation = self.animations[self.status]
         self.frame_index += self.animation_speed
+
         if self.frame_index >= len(animation):
             self.frame_index = 0
 
-        # Keep the center fixed to prevent jumping
-        center = self.rect.center
         self.image = animation[int(self.frame_index)]
-        self.rect = self.image.get_rect(center=center)
+
         if self.flash_timer > 0:
             self.flash_timer -= 1
             self.image.set_alpha(100)
         else:
             self.image.set_alpha(255)
 
-    def update(self):
+    def update(self, distraction_pos):
         target = None
         self.state = "IDLE"
+        if distraction_pos:
+            dist_vec = pygame.math.Vector2(distraction_pos) - pygame.math.Vector2(self.rect.center)
+            if dist_vec.length() < self.detection_range:
+                target = pygame.math.Vector2(distraction_pos)
+                self.state = "DISTRACTED"
 
         if not target:
             player_vec = pygame.math.Vector2(self.player.rect.center) - pygame.math.Vector2(self.rect.center)

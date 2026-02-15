@@ -1,7 +1,6 @@
 import pygame
 from settings import *
 from support import import_sprite_sheet
-from enemies import Zombie
 
 
 class Player(pygame.sprite.Sprite):
@@ -12,7 +11,7 @@ class Player(pygame.sprite.Sprite):
         self.is_attacking = False
         self.attack_timer = 0
         self.attack_cooldown = 10
-        self.attack_damage = 4
+        self.attack_damage = 2
         self.sword_hitbox = None
 
         self.import_player_assets()
@@ -34,9 +33,8 @@ class Player(pygame.sprite.Sprite):
         #player stamina
         self.max_stamina=100
         self.stamina=100
-        self.stamina_drain=0.4
-        self.stamina_regen=0.2
-        self.attack_cost=15
+        self.stamina_drain=0.6
+        self.stamina_regen=0.3
         #exp
         self.lvl=1
         self.xp=100
@@ -45,7 +43,7 @@ class Player(pygame.sprite.Sprite):
     def import_player_assets(self):
         
         character_path = 'assets/player/'
-        actions = ['idle', 'walk', 'run','attack']
+        actions = ['idle', 'walk', 'run']
         directions = ['up', 'down', 'left', 'right']
         self.animations = {}
 
@@ -62,15 +60,15 @@ class Player(pygame.sprite.Sprite):
 
     def movement(self):
         keys=pygame.key.get_pressed()
-        if keys[pygame.K_z] and not keys[pygame.K_s]:
+        if keys[pygame.K_UP] and not keys[pygame.K_DOWN]:
            self.direction.y=-1
-        elif keys[pygame.K_s]and not keys[pygame.K_z]:
+        elif keys[pygame.K_DOWN]and not keys[pygame.K_UP]:
            self.direction.y=1
         else:
             self.direction.y=0  
-        if keys[pygame.K_d]and not keys[pygame.K_q]:
+        if keys[pygame.K_RIGHT]and not keys[pygame.K_LEFT]:
            self.direction.x=1
-        elif keys[pygame.K_q] and not keys[pygame.K_d]:
+        elif keys[pygame.K_LEFT] and not keys[pygame.K_RIGHT]:
             self.direction.x=-1 
         else:
             self.direction.x=0
@@ -85,13 +83,13 @@ class Player(pygame.sprite.Sprite):
             self.facing = 'down'
         if self.direction.length() == 0:
             self.status = f'idle_{self.facing}'
-        elif keys[pygame.K_LSHIFT]:
+        elif keys[pygame.K_s]:
             self.status=f'run_{self.facing}'
         else:
             self.status = f'walk_{self.facing}'       
        #sprint and stamina
         self.speed=self.base_speed
-        if keys[pygame.K_LSHIFT] and self.stamina>0:  
+        if keys[pygame.K_s] and self.stamina>0:  
             self.speed=self.base_speed*self.run_multiplier
             self.stamina-=self.stamina_drain
         else:
@@ -103,11 +101,9 @@ class Player(pygame.sprite.Sprite):
             self.stamina=self.max_stamina
 
         # Attack
-        if keys[pygame.K_SPACE] and self.attack_timer <= 0 and self.stamina>self.attack_cost:
+        if keys[pygame.K_SPACE] and self.attack_timer <= 0:
             self.is_attacking = True
             self.attack_timer = self.attack_cooldown
-            self.stamina-=self.attack_cost
-            self.status = f'attack_{self.facing}'
 
 
     def move(self):
@@ -115,45 +111,24 @@ class Player(pygame.sprite.Sprite):
             self.direction=self.direction.normalize()
             self.rect.x += self.direction.x * self.speed
             self.rect.y += self.direction.y * self.speed
+            self.hitbox.center = self.rect.center
     def animate(self):
         if self.status!=self.old_status:
             self.frame_index=0
             self.old_status=self.status
-        if not self.is_attacking:
-            if self.status != self.old_status:
-                self.frame_index = 0
-                self.old_status = self.status
-        else:
-
-            self.status = f'attack_{self.facing}'
-
-        animation = self.animations.get(self.status)
+        animation=self.animations.get(self.status)
         if not animation:
             return
         self.frame_index += self.animation_speed
         if self.frame_index >= len(animation):
-            if self.is_attacking:
-                self.is_attacking = False
             self.frame_index = 0
         self.image = animation[int(self.frame_index)]
     def gain_xp(self,amount):
         self.xp_self+=amount
         if self.xp_self>=self.xp:
             self.xp_self-=self.xp
-            self.lvl_up()
-
-    def lvl_up(self):
-        self.lvl+=1
-        self.max_hp+=50
-        self.hp=self.max_hp
-        self.max_stamina+=10
-        self.stamina=self.max_stamina
-        self.attack_damage+=1
-        self.xp= int(self.xp * 1.5)
-        print("New Stats -> HP:", self.max_hp,
-          "Stamina:", self.max_stamina,
-          "Damage:", self.attack_damage,
-          "XP needed:", self.xp)
+            self.lvl+=1
+            self.xp = int(self.xp * 1.3)
     def update(self):
         self.movement()
         self.move()
