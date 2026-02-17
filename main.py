@@ -1,12 +1,11 @@
 import pygame,sys
 from settings import *
 from level import Level
-
 class Game:
     def __init__(self):
         #initialization
         pygame.init()
-        self.screen=pygame.display.set_mode((width,height))
+        self.screen=pygame.display.set_mode((0,0), pygame.RESIZABLE)
         pygame.display.set_caption("Into The Abyss")
         self.clock=pygame.time.Clock()
         self.level=Level()
@@ -19,7 +18,12 @@ class Game:
                 if event.type==pygame.QUIT:
                     pygame.quit()
                     sys.exit()
-            self.screen.fill('#71B5D1')
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_ESCAPE:
+                        pygame.quit()
+                        sys.exit()
+
+            self.screen.fill("black") # old color #71B5D1
             self.level.run()
             pygame.display.flip()
 
