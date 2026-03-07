@@ -3,15 +3,15 @@ from settings import *
 from level import Level
 class Game:
     def __init__(self):
-        #initialization
+        # Initialization
         pygame.init()
-        self.screen=pygame.display.set_mode((0,0), pygame.RESIZABLE)
-        pygame.display.set_caption("Into The Abyss")
+        self.screen = pygame.display.set_mode((0,0), pygame.RESIZABLE)
+        pygame.display.set_caption("Into the Abyss")
         self.clock=pygame.time.Clock()
         self.level=Level()
         
     def run(self):
-        #game loop
+        # Game loop
         while True:
             self.clock.tick(fps)
             for event in pygame.event.get():
@@ -22,8 +22,10 @@ class Game:
                     if event.key == pygame.K_ESCAPE:
                         pygame.quit()
                         sys.exit()
+                    if event.key == pygame.K_n:
+                        self.level.next_level()
 
-            self.screen.fill("black") # old color #71B5D1
+            self.screen.fill("black") # Old color #71B5D1
             self.level.run()
             pygame.display.flip()
 

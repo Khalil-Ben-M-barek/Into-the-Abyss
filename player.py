@@ -28,7 +28,7 @@ class Player(pygame.sprite.Sprite):
             self.image = frames[0]
         self.rect=self.image.get_rect(topleft=pos)
 
-        self.hitbox = pygame.Rect(0, 0, self.rect.width * 0.1, 10)
+        self.hitbox = pygame.Rect(0, 0, self.rect.width * 0.1, 30)
         self.hitbox.centerx = self.rect.centerx
         self.hitbox.bottom = self.rect.bottom - 40
         self.hitbox_mask = pygame.Mask(self.hitbox.size)

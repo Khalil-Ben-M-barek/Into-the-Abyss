@@ -2,6 +2,21 @@ import pygame
 import math
 from support import import_sprite_sheet
 
+class Projectile(pygame.sprite.Sprite):
+    def __init__(self, pos, groups):
+        super().__init__(groups)
+        self.image = pygame.Surface((15, 8))
+        self.image.fill("cyan")
+        self.rect = self.image.get_rect(center = pos)
+        self.direction = pygame.math.Vector2(-1, 0)
+        self.speed = 5
+        self.damage = 100
+
+    def update(self):
+        self.rect.x += self.direction.x * self.speed
+        if self.rect.right < 400:
+            self.kill()
+
 class Zombie(pygame.sprite.Sprite):
     def __init__(self, pos, player, *groups):
         super().__init__(*groups)
@@ -15,7 +30,7 @@ class Zombie(pygame.sprite.Sprite):
         self.prev_status = self.status
         self.frame_index = 0
         self.pos = pygame.math.Vector2(pos)
-        self.speed = 1.3
+        self.speed = 1.5
         self.detection_range = 200
         self.xp_reward = 50
 

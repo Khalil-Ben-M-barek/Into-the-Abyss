@@ -1,7 +1,7 @@
 import pygame
 from player import Player
 from settings import *
-from enemies import Zombie
+from enemies import Zombie, Projectile
 
 class Level:
     def __init__(self):
@@ -20,7 +20,7 @@ class Level:
             "Medium Potion": 200,
             "Large Potion": 400
         }
-        self.potion_names = list(self.potions.keys()) # extracting potion names.
+        self.potion_names = list(self.potions.keys()) # Extracting potion names.
         self.p_pressed = False
         self.up_pressed = False
         self.down_pressed = False
@@ -28,6 +28,13 @@ class Level:
         self.upgrade_menu_active = False
         self.upgrade_options = ["HP", "Stamina", "Attack"]
         self.upgrade_index = 0
+
+        self.current_map_index = 1
+        self.teleport_zone = pygame.Rect(1600, 530, 130, 80)
+
+        # Needed to limit spawning projectiles to 1 per second
+        self.projectile_timer = 0 
+        self.projectile_delay = 60
 
         self.create_map()
 
@@ -108,12 +115,17 @@ class Level:
         self.zombie = Zombie((1200, 250),self.player,self.visible_sprites)
         self.zombie = Zombie((1200, 360),self.player,self.visible_sprites)
         
-        self.map=pygame.image.load("assets/map.png").convert_alpha()
+        if self.current_map_index == 1:
+            map_path = "assets/map.png"
+            col_path = "assets/map_collision.png"
+        else:
+            map_path = "assets/map_2.png"
+            col_path = "assets/map_collision_2.png"
+
+        self.map=pygame.image.load(map_path).convert_alpha()
         self.map = pygame.transform.scale(self.map, (1920, 1080))
-
-        self.collision_surf = pygame.image.load("assets/map_collision.png").convert_alpha()
+        self.collision_surf = pygame.image.load(col_path).convert_alpha()
         self.collision_surf = pygame.transform.scale(self.collision_surf, (1920, 1080))
-
         self.map_mask = pygame.mask.from_surface(self.collision_surf)
 
         #self.map_w , self.map_h=self.map.get_size()
@@ -186,7 +198,12 @@ class Level:
             
   
         if not self.paused:
-            # for the xp
+            self.projectile_timer += 1
+            if self.projectile_timer >= self.projectile_delay:
+                projectile_spawn_pos = (self.teleport_zone.left - 80, self.teleport_zone.centery + 20)
+                Projectile(projectile_spawn_pos, self.visible_sprites)
+                self.projectile_timer = 0
+
             if keys[pygame.K_d] and self.distraction_timer <= 0:
                 self.distraction_pos = self.player.rect.center
                 self.distraction_timer = 180 # 3 seconds
@@ -224,6 +241,12 @@ class Level:
                     sprite.update(self.map_mask)
                 else:
                     sprite.update()
+
+            for sprite in self.visible_sprites:
+                if isinstance(sprite, Projectile):
+                    if sprite.rect.colliderect(self.player.hitbox):
+                        self.player.take_damage(sprite.damage)
+                        sprite.kill()
             self.visible_sprites.custom_draw(self.player)
 
 
@@ -249,11 +272,21 @@ class Level:
             for sprite in self.visible_sprites:
                 if isinstance(sprite, Zombie):
                     if sprite.hitbox.colliderect(self.player.hitbox):
-                        self.player.take_damage(1)
+                        self.player.take_damage(2)
 
             self.draw_hp_bars()
             self.draw_stamina()
             self.draw_xp()
+
+            t_debug = self.teleport_zone.copy()
+            t_debug.topleft -= self.visible_sprites.offset
+            if self.player.hitbox.colliderect(self.teleport_zone):
+                pygame.time.delay(120)
+                for sprite in self.visible_sprites:
+                    if isinstance(sprite, Zombie):
+                        sprite.kill()
+                self.current_map_index +=1
+                self.create_map()
 
 
     def draw_hp_bars(self):
