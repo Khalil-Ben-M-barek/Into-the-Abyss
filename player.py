@@ -2,10 +2,27 @@ import pygame
 from settings import *
 from support import import_sprite_sheet
 from enemies import Zombie
+import random
+
+class Item(pygame.sprite.Sprite):
+    def __init__(self, pos, *groups):
+        super().__init__(*groups)
+        self.item = random.choice(["Small Potion", "Medium Potion", "Large Potion", "Distraction Object"])
+        self.image = pygame.Surface((25, 25))
+        self.image.fill("green")
+        self.rect = self.image.get_rect(topleft = pos)
+
+    def pick_up(self, player):
+        if len(player.inventory) < 2:
+            player.inventory.append(self.item)
+            self.kill()
+            return True
+        return False
 
 
 class Player(pygame.sprite.Sprite):
-    def __init__(self, pos, *groups):
+    def __init__(self, pos, level, *groups):
+        self.level = level
         super().__init__(*groups)
         self.hp = 1000
         self.max_hp = 1000
@@ -35,22 +52,24 @@ class Player(pygame.sprite.Sprite):
         self.hitbox_mask.fill()
 
         self.direction=pygame.math.Vector2()
-        self.base_speed=2.2
-        self.run_multiplier=1.5
+        self.base_speed = 2.2
+        self.run_multiplier = 1.5
         self.speed=self.base_speed
         self.waiting_for_upgrade = False
         self.mask = pygame.mask.from_surface(self.image)
 
-        #player stamina
-        self.max_stamina=100
-        self.stamina=100
-        self.stamina_drain=0.4
-        self.stamina_regen=0.2
-        self.attack_cost=15
-        #exp
-        self.lvl=1
-        self.xp=100
-        self.xp_self=0
+        self.max_stamina = 100
+        self.stamina = 100
+        self.stamina_drain = 0.4
+        self.stamina_regen = 0.2
+        self.attack_cost = 15
+        
+        self.lvl = 1
+        self.xp = 200
+        self.xp_self = 0
+
+        self.inventory = []
+        self.poison_timer = 0
 
     def import_player_assets(self):
         
@@ -161,9 +180,9 @@ class Player(pygame.sprite.Sprite):
 
 
     def gain_xp(self,amount):
-        self.xp_self+=amount
-        if self.xp_self>=self.xp:
-            self.xp_self-=self.xp
+        self.xp_self += amount
+        if self.xp_self >= self.xp:
+            self.xp_self -= self.xp
             self.lvl_up()
 
     def lvl_up(self):
@@ -197,11 +216,15 @@ class Player(pygame.sprite.Sprite):
         else:
             self.sword_hitbox = None
 
-
+        self.poison_timer += 1
+        if self.poison_timer >= 60: # Damage every second
+            self.take_damage(10)
+            self.poison_timer = 0 # If we don't reset, the damage would be continuous instead of after each second
 
     def take_damage(self, amount):
             self.hp -= amount
             self.hit_time = pygame.time.get_ticks()
             if self.hp <= 0:
-                self.is_alive = False
                 self.kill()
+                self.level.current_map_index = 0
+                self.level.create_map(save_stats=False)

@@ -3,7 +3,7 @@ import math
 from support import import_sprite_sheet
 
 class Projectile(pygame.sprite.Sprite):
-    def __init__(self, pos, groups):
+    def __init__(self, pos, groups, despawn_x=0):
         super().__init__(groups)
         self.image = pygame.Surface((15, 8))
         self.image.fill("cyan")
@@ -11,10 +11,11 @@ class Projectile(pygame.sprite.Sprite):
         self.direction = pygame.math.Vector2(-1, 0)
         self.speed = 5
         self.damage = 100
+        self.despawn_x = despawn_x 
 
     def update(self):
         self.rect.x += self.direction.x * self.speed
-        if self.rect.right < 400:
+        if self.rect.right < self.despawn_x:
             self.kill()
 
 class Zombie(pygame.sprite.Sprite):
@@ -22,14 +23,12 @@ class Zombie(pygame.sprite.Sprite):
         super().__init__(*groups)
         self.max_hp = 100
         self.hp = 100
-        self.is_alive = True
         self.distraction = None
         self.state = "IDLE"
         self.player = player
         self.status = 'IDLE'
         self.prev_status = self.status
         self.frame_index = 0
-        self.pos = pygame.math.Vector2(pos)
         self.speed = 1.5
         self.detection_range = 200
         self.xp_reward = 50
@@ -47,7 +46,7 @@ class Zombie(pygame.sprite.Sprite):
         
         self.hitbox_mask = pygame.Mask(self.hitbox.size)
         self.hitbox_mask.fill()
-
+        self.pos = pygame.math.Vector2(self.hitbox.center)
 
     def import_assets(self):
         path = 'assets/enemies/'
@@ -75,12 +74,12 @@ class Zombie(pygame.sprite.Sprite):
             self.frame_index = 0
 
         self.image = animation[int(self.frame_index)]
-        self.rect = self.image.get_rect(center = (round(self.pos.x), round(self.pos.y)))
 
         self.rect.centerx = self.hitbox.centerx
         self.rect.bottom = self.hitbox.bottom + 40
     
     def update(self, distraction_pos, map_mask):
+        self.pos = pygame.math.Vector2(self.hitbox.center)
         target = None
         if distraction_pos:
             dist_vec = pygame.math.Vector2(distraction_pos) - pygame.math.Vector2(self.hitbox.center)
@@ -104,6 +103,7 @@ class Zombie(pygame.sprite.Sprite):
                 self.hitbox.y += direction.y * self.speed
                 if map_mask.overlap(self.hitbox_mask, (self.hitbox.x, self.hitbox.y)):
                     self.hitbox.y -= direction.y * self.speed
+                    
                 self.pos = pygame.math.Vector2(self.hitbox.center)
                 self.status = 'walk'
             else:
@@ -116,6 +116,5 @@ class Zombie(pygame.sprite.Sprite):
     def take_damage(self, amount):
         self.hp -= amount
         if self.hp <= 0:
-            self.is_alive = False
             self.player.gain_xp(self.xp_reward)
             self.kill()
