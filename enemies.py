@@ -3,20 +3,67 @@ import math
 from support import import_sprite_sheet
 
 class Projectile(pygame.sprite.Sprite):
-    def __init__(self, pos, groups, despawn_x=0):
+    def __init__(self, pos, groups, despawn_x=0, despawn_y=0, direction=(-1, 0)):
         super().__init__(groups)
         self.image = pygame.Surface((15, 8))
         self.image.fill("cyan")
         self.rect = self.image.get_rect(center = pos)
-        self.direction = pygame.math.Vector2(-1, 0)
+        self.direction = pygame.math.Vector2(direction).normalize()
         self.speed = 5
         self.damage = 100
-        self.despawn_x = despawn_x 
+        self.despawn_x = despawn_x
+        self.despawn_y = despawn_y
 
     def update(self):
         self.rect.x += self.direction.x * self.speed
-        if self.rect.right < self.despawn_x:
+        self.rect.y += self.direction.y * self.speed
+        if self.direction.x < 0 and self.rect.right < self.despawn_x:
             self.kill()
+        elif self.direction.x > 0 and self.rect.left > self.despawn_x:
+            self.kill()
+
+        if self.direction.y < 0 and self.rect.bottom < self.despawn_y:
+            self.kill()
+        elif self.direction.y > 0 and self.rect.top > self.despawn_y:
+            self.kill()
+
+class MiniBoss(pygame.sprite.Sprite):
+    def __init__(self, pos, groups, player, projectile_spawn_pos, projectile_direction=(-1, 0), projectile_despawn_x=0, projectile_despawn_y=1080):
+        super().__init__(groups)
+        self.max_hp = 200
+        self.hp = 200
+        self.original = pygame.image.load("assets/enemies/miniboss.png").convert_alpha()
+        self.original = pygame.transform.scale(self.original, (200, 150))
+        dx, dy = projectile_direction
+        if dx > 0:
+            self.image = pygame.transform.rotate(self.original, -90) # Flip horizontally
+        elif dy > 0:
+            self.image = pygame.transform.rotate(self.original, 90) # Flip vertically
+        else:
+            self.image = self.original # Default (facing left)
+
+        self.rect = self.image.get_rect(center=pos)
+        self.player = player
+        self.projectile_spawn_pos = projectile_spawn_pos
+        self.projectile_direction = projectile_direction
+        self.projectile_despawn_x = projectile_despawn_x
+        self.projectile_despawn_y = projectile_despawn_y
+
+        # Needed to limit spawning projectiles to 1 per second
+        self.projectile_timer = 0
+        self.projectile_delay = 60
+
+    def take_damage(self, amount):
+        self.hp -= amount
+        if self.hp <= 0:
+            self.player.gain_xp(100)
+            self.kill()
+
+    def update(self, visible_sprites):
+        self.projectile_timer += 1
+        if self.projectile_timer >= self.projectile_delay:
+            Projectile(self.projectile_spawn_pos, visible_sprites, self.projectile_despawn_x, self.projectile_despawn_y, self.projectile_direction)
+            self.projectile_timer = 0
 
 class Zombie(pygame.sprite.Sprite):
     def __init__(self, pos, player, *groups):

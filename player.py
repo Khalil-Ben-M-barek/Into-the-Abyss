@@ -138,15 +138,28 @@ class Player(pygame.sprite.Sprite):
             self.stamina-=self.attack_cost
             self.status = f'attack_{self.facing}'
 
-    def move(self, map_mask):
+    def move(self, map_mask, obstacles):
         if self.direction.length()>0:
-            self.direction=self.direction.normalize()
+            self.direction = self.direction.normalize()
             self.hitbox.x += self.direction.x * self.speed
+            for sprite in obstacles: # To simulate adding horizontal extra collision for minibosses and things like that.
+                if self.hitbox.colliderect(sprite.rect):
+                    if self.direction.x > 0:
+                        self.hitbox.right = sprite.rect.left
+                    if self.direction.x < 0:
+                        self.hitbox.left = sprite.rect.right
 
             if map_mask.overlap(self.hitbox_mask, (self.hitbox.x, self.hitbox.y)):
                 self.hitbox.x -= self.direction.x * self.speed
 
             self.hitbox.y += self.direction.y * self.speed
+            
+            for sprite in obstacles: # Vertical collision simulation
+                if self.hitbox.colliderect(sprite.rect):
+                    if self.direction.y > 0:
+                        self.hitbox.bottom = sprite.rect.top
+                    if self.direction.y < 0:
+                        self.hitbox.top = sprite.rect.bottom
 
             if map_mask.overlap(self.hitbox_mask, (self.hitbox.x, self.hitbox.y)):
                 self.hitbox.y -= self.direction.y * self.speed
@@ -189,13 +202,10 @@ class Player(pygame.sprite.Sprite):
         self.lvl+=1
         self.xp= int(self.xp * 1.5)
         self.waiting_for_upgrade = True
-        print("New Stats -> HP:", self.max_hp,
-          "Stamina:", self.max_stamina,
-          "Damage:", self.attack_damage,
-          "XP needed:", self.xp)
-    def update(self, map_mask):
+        
+    def update(self, map_mask, obstacles):
         self.movement()
-        self.move(map_mask)
+        self.move(map_mask, obstacles)
         self.animate()
         
         if self.attack_timer > 0:
@@ -218,7 +228,7 @@ class Player(pygame.sprite.Sprite):
 
         self.poison_timer += 1
         if self.poison_timer >= 60: # Damage every second
-            self.take_damage(10)
+            self.take_damage(15)
             self.poison_timer = 0 # If we don't reset, the damage would be continuous instead of after each second
 
     def take_damage(self, amount):

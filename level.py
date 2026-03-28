@@ -1,7 +1,7 @@
 import pygame
 from player import Player, Item
 from settings import *
-from enemies import Zombie, Projectile
+from enemies import Zombie, Projectile, MiniBoss
 
 LEVELS = [
     {   # Level 1
@@ -19,9 +19,7 @@ LEVELS = [
         "items": [
             (400, 250), (1100, 900), (1350, 100), (400, 100)
         ],
-        "projectile_spawn_pos": (1520, 590),
-        "projectile_despawn_x": 400,
-        "projectile_delay": 60
+        "minibosses": [{"pos": (1500, 580), "projectile_spawn_pos": (1500, 580), "projectile_direction": (-1, 0), "projectile_despawn_x": 400, "projectile_despawn_y": 0}]
     },
 
     {   # Level 2
@@ -42,16 +40,18 @@ LEVELS = [
         "items": [
             (820, 320), (1050, 400), (1120, 190), (380, 650), (1040, 630), (1430, 720)
         ],
-        "projectile_spawn_pos": (1660, 430),
-        "projectile_despawn_x": 380,
-        "projectile_delay": 60
+        "minibosses": [
+            {"pos": (1650, 460), "projectile_spawn_pos": (1650, 425), "projectile_direction": (-1, 0), "projectile_despawn_x": 380, "projectile_despawn_y": 0}, 
+            {"pos": (1570, 270), "projectile_spawn_pos": (1550, 280), "projectile_direction": (0, 1), "projectile_despawn_x": 220, "projectile_despawn_y": 870}
+        ]
     }
 ]
 
+
 ITEM_EFFECTS = {
-    "Small Potion": {"type": "heal", "amount": 100},
-    "Medium Potion": {"type": "heal", "amount": 200},
-    "Large Potion": {"type": "heal", "amount": 400},
+    "Small Potion": {"type": "heal", "amount": 200},
+    "Medium Potion": {"type": "heal", "amount": 400},
+    "Large Potion": {"type": "heal", "amount": 800},
     "Distraction Object": {"type": "distraction"}
 }
 
@@ -59,23 +59,19 @@ class Level:
     def __init__(self):
         self.display_surface = pygame.display.get_surface()
         self.visible_sprites = cameragroup()
+        self.obstacle_sprites = pygame.sprite.Group()
         self.font = pygame.font.Font(None, 28)
 
         self.distraction_pos = None
         self.distraction_timer = 0
 
         self.item_sprites = pygame.sprite.Group()
-
         self.paused = False
         self.menu_index = 0
 
         self.upgrade_menu_active = False
         self.upgrade_options = ["HP", "Stamina", "Attack"]
         self.upgrade_index = 0
-
-        # Needed to limit spawning projectiles to 1 per second
-        self.projectile_timer = 0 
-        self.projectile_delay = 60
 
         self.p_pressed = False
         self.up_pressed = False
@@ -156,6 +152,7 @@ class Level:
         # Clearing the map
         self.visible_sprites.empty()
         self.item_sprites.empty()
+        self.obstacle_sprites.empty()
 
         self.player = Player(LEVELS[self.current_map_index]["player_spawn"], self, self.visible_sprites)
 
@@ -181,12 +178,12 @@ class Level:
         self.collision_surf = pygame.image.load(LEVELS[self.current_map_index]["collision"]).convert_alpha()
         self.collision_surf = pygame.transform.scale(self.collision_surf, LEVELS[self.current_map_index]["map_size"])
         self.map_mask = pygame.mask.from_surface(self.collision_surf)
-
         self.teleport_zone = pygame.Rect(LEVELS[self.current_map_index]["teleport_zone"])
-        self.projectile_despawn_x = LEVELS[self.current_map_index].get("projectile_despawn_x", 400)
-        self.projectile_spawn_pos = LEVELS[self.current_map_index].get("projectile_spawn_pos") # I used get to have a fallback because not all levels will have these
-        self.projectile_delay = LEVELS[self.current_map_index].get("projectile_delay", 60)
-        self.projectile_timer = 0
+
+        miniboss_data = LEVELS[self.current_map_index].get("minibosses")
+        if miniboss_data:
+            for mb in miniboss_data:
+                MiniBoss(mb["pos"], [self.visible_sprites, self.obstacle_sprites], self.player, mb["projectile_spawn_pos"], mb.get("projectile_direction", (-1, 0)), mb.get("projectile_despawn_x", 0), mb.get("projectile_despawn_y", 1080))
 
     def next_level(self):
         next_index = self.current_map_index + 1
@@ -243,8 +240,7 @@ class Level:
             if self.upgrade_menu_active:
                 self.draw_upgrade_menu()
                 self.handle_upgrade()
-
-            
+ 
             else:
                 self.draw_inventory_menu()
                 if keys[pygame.K_UP]:
@@ -273,12 +269,6 @@ class Level:
                     self.paused = False
 
         if not self.paused:
-            self.projectile_timer += 1
-            if self.projectile_timer >= self.projectile_delay:
-                if self.projectile_spawn_pos:
-                    Projectile(self.projectile_spawn_pos, self.visible_sprites, self.projectile_despawn_x)
-                self.projectile_timer = 0
-
             if keys[pygame.K_d] and self.distraction_timer <= 0:
                 if "Distraction Object" in self.player.inventory:
                     self.player.inventory.remove("Distraction Object")
@@ -315,7 +305,9 @@ class Level:
                 if isinstance(sprite, Zombie):
                     sprite.update(self.distraction_pos, self.map_mask)
                 elif isinstance(sprite, Player):
-                    sprite.update(self.map_mask)
+                    sprite.update(self.map_mask, self.obstacle_sprites)
+                elif isinstance(sprite, MiniBoss):
+                    sprite.update(self.visible_sprites)
                 else:
                     sprite.update()
 
@@ -342,7 +334,7 @@ class Level:
 
             if self.player.sword_hitbox:
                 for sprite in self.visible_sprites:
-                    if isinstance(sprite, Zombie):
+                    if isinstance(sprite, (Zombie, MiniBoss)):
                         if self.player.sword_hitbox.colliderect(sprite.rect):
                             sprite.take_damage(self.player.attack_damage)
 
@@ -360,7 +352,7 @@ class Level:
             if self.player.hitbox.colliderect(self.teleport_zone):
                 pygame.time.delay(120)
                 self.next_level()
-
+            
     def draw_hp_bars(self):
         for sprite in self.visible_sprites:
             if hasattr(sprite, "hp"):
